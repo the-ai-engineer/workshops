@@ -11,11 +11,12 @@ Most n8n workflows are a trigger, then a few fixed steps: fetch something, maybe
 | [`invoice_inbox`](automations/invoice_inbox.py) | Cloud Scheduler, every 5 minutes | A PDF dropped in the Inbox folder in Drive becomes a row in the Invoices sheet (Claude reads it), then moves to Processed |
 | [`client_folder`](automations/client_folder.py) | Webhook from your CRM or form | A new client gets a Drive folder with subfolders, and a row in the Clients sheet |
 | [`meeting_reminders`](automations/meeting_reminders.py) | Cloud Scheduler, 8am daily | Every guest from outside the business gets a reminder email the day before |
+| [`meeting_follow_up`](automations/meeting_follow_up.py) | Zoom webhook, when a transcript is ready | Claude summarises the call into the Meetings sheet and writes the client a follow-up email ("I'll send the proposal in the next 48 hours"), saved to Gmail drafts for you to check and send |
 
 ```
-main.py          one service, POST /run/<name>, protected by the X-Token header
+main.py          one service: POST /run/<name> (X-Token header) and POST /zoom (Zoom's signature)
 automations/     one file per automation, each a run(payload) function
-lib/             google.py (Drive, Sheets, Calendar), ai.py (one typed Claude call), mail.py (SMTP)
+lib/             google.py (Drive, Sheets, Calendar), ai.py (one typed Claude call), mail.py (SMTP and Gmail drafts), zoom.py
 tests/           every automation against fakes, no keys needed
 deploy.sh        Cloud Run plus the scheduler jobs
 ```
@@ -26,7 +27,8 @@ deploy.sh        Cloud Run plus the scheduler jobs
 2. Create a Google Cloud project and a service account (`deploy.sh` makes one called `automations`). For running locally, download a key for it as `service-account.json`.
 3. In Google Drive, make an Inbox folder, a Processed folder and a Clients folder. In Sheets, make a sheet with an `Invoices` tab and one with a `Clients` tab. Share them all with the service account's email as Editor. Service accounts have no Drive storage of their own, so a shared drive works best for the Clients folder.
 4. For reminders, share the calendar with the service account ("See all event details") and create a Gmail [app password](https://myaccount.google.com/apppasswords) for `SMTP_PASSWORD`.
-5. `cp .env.example .env` and fill it in. Folder and sheet ids are the long part of their URLs.
+5. For meeting follow-up, add a `Meetings` tab to the Clients sheet. In the Zoom app marketplace, make a webhook-only app subscribed to "Recording transcript files have completed" (cloud recording with audio transcripts must be on), turn on "include download token", and copy its secret token to `ZOOM_WEBHOOK_SECRET`. The client's email comes from the calendar event that holds the Zoom link.
+6. `cp .env.example .env` and fill it in. Folder and sheet ids are the long part of their URLs.
 
 ## Run
 
@@ -35,6 +37,7 @@ uv run pytest                                          # no keys needed
 uv run python -m automations.invoice_inbox             # drop a PDF in Inbox first
 uv run python -m automations.client_folder "Acme Ltd" jo@acme.com
 uv run python -m automations.meeting_reminders
+uv run python -m automations.meeting_follow_up transcript.vtt "Acme kick-off" jo@acme.com
 uv run uvicorn main:app --reload                       # the service, on localhost:8000
 ```
 
@@ -44,7 +47,7 @@ uv run uvicorn main:app --reload                       # the service, on localho
 PROJECT=your-project-id ./deploy.sh
 ```
 
-It deploys the service, creates the two scheduler jobs and prints the webhook URL for your CRM. Point the CRM's "new contact" webhook at `/run/client_folder` with the `X-Token` header, mapping its fields to `name` and `email`.
+It deploys the service, creates the two scheduler jobs and prints the webhook URLs for Zoom and your CRM. Point the CRM's "new contact" webhook at `/run/client_folder` with the `X-Token` header, mapping its fields to `name` and `email`.
 
 ## Adding your own
 

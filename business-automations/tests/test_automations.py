@@ -117,3 +117,57 @@ def test_service_needs_the_token(monkeypatch):
     assert client.post("/run/invoice_inbox").status_code == 401
     assert client.post("/run/nope", headers={"X-Token": "secret"}).status_code == 404
     assert client.post("/run/invoice_inbox", headers={"X-Token": "secret"}).json() == {"ok": True}
+
+
+def test_vtt_to_text_keeps_only_what_people_said():
+    from lib.zoom import vtt_to_text
+
+    vtt = "WEBVTT\n\n1\n00:00:01.000 --> 00:00:04.000\nOwain: Thanks for joining.\n\n2\n00:00:05.000 --> 00:00:07.000\nJo: Happy to be here.\n"
+    assert vtt_to_text(vtt) == "Owain: Thanks for joining.\nJo: Happy to be here."
+
+
+def test_meeting_follow_up_finds_the_client_and_saves_a_draft(monkeypatch):
+    from automations import meeting_follow_up
+
+    fake = FakeGoogle(events=[
+        {"summary": "Other call", "location": "https://zoom.us/j/999", "attendees": [{"email": "x@other.com"}]},
+        {"summary": "Acme kick-off", "location": "https://zoom.us/j/85612345678",
+         "attendees": [{"email": "me@us.com"}, {"email": "jo@acme.com"}]},
+    ])
+    drafts, prompts = [], []
+    monkeypatch.setattr(meeting_follow_up, "google", fake)
+    monkeypatch.setattr(meeting_follow_up.zoom, "transcript", lambda event: "Jo: We need a proposal.")
+    monkeypatch.setattr(meeting_follow_up.mail, "save_draft", lambda to, subject, body: drafts.append((to, subject, body)))
+
+    def fake_extract(prompt, schema):
+        prompts.append(prompt)
+        return schema(summary="Acme wants a proposal.", next_steps=["Owain: send the proposal"],
+                      email_subject="Thanks for today", email_body="Hi Jo, ...")
+
+    monkeypatch.setattr(meeting_follow_up, "extract", fake_extract)
+    event = {"event": "recording.transcript_completed", "download_token": "t",
+             "payload": {"object": {"id": 85612345678, "topic": "Acme kick-off", "start_time": "2026-11-12T10:00:00Z"}}}
+
+    result = meeting_follow_up.run(event)
+
+    assert result["to"] == ["jo@acme.com"]
+    assert drafts == [(["jo@acme.com"], "Thanks for today", "Hi Jo, ...")]
+    assert fake.rows[0][1] == "Meetings"
+    assert "Jo: We need a proposal." in prompts[0] and "48 hours" in prompts[0]
+
+
+def test_zoom_route_checks_the_signature_and_answers_validation(monkeypatch):
+    import hashlib
+    import hmac
+    import json
+
+    import main
+
+    monkeypatch.setenv("ZOOM_WEBHOOK_SECRET", "zs")
+    client = TestClient(main.app)
+    body = json.dumps({"event": "endpoint.url_validation", "payload": {"plainToken": "abc"}})
+    signature = "v0=" + hmac.new(b"zs", f"v0:123:{body}".encode(), hashlib.sha256).hexdigest()
+
+    assert client.post("/zoom", content=body, headers={"x-zm-request-timestamp": "123", "x-zm-signature": "v0=bad"}).status_code == 401
+    response = client.post("/zoom", content=body, headers={"x-zm-request-timestamp": "123", "x-zm-signature": signature})
+    assert response.json() == {"plainToken": "abc", "encryptedToken": hmac.new(b"zs", b"abc", hashlib.sha256).hexdigest()}
