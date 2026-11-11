@@ -1,0 +1,7 @@
+# Kept out of the upload to Cloud Build, so out of the image too.
+.env
+service-account*.json
+.venv/
+.pytest_cache/
+__pycache__/
+.git/
