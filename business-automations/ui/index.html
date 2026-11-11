@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Automations</title>
+<style>
+/* Layout: a workflow canvas. One flow per row: nodes joined left to right, a Run button, the result underneath. */
+:root {
+  --canvas: #f3f4f7; --dot: #d9dbe3; --card: #ffffff; --ink: #0d0d0f; --body: #5c5c66; --muted: #8e8e98; --line: #e1e2e8;
+  --accent: #2b59c3; --accent-soft: #eef2fc; --ok: #1a8a4c; --ok-soft: #e9f6ee; --bad: #c0392b; --bad-soft: #fbecea;
+  --trigger: #b45f06; --trigger-soft: #fdf3e3;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.5 "Helvetica Neue", Helvetica, Arial, sans-serif; color: var(--body);
+  background: var(--canvas) radial-gradient(var(--dot) 1px, transparent 1px) 0 0 / 18px 18px; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 18px 28px; background: var(--card); border-bottom: 1px solid var(--line); }
+header h1 { margin: 0; font-size: 18px; color: var(--ink); }
+header .pill { font-size: 12px; padding: 3px 10px; border-radius: 20px; background: var(--canvas); color: var(--body); font-family: var(--mono); }
+header a { margin-left: auto; color: var(--accent); font-weight: 600; text-decoration: none; }
+header a:hover { text-decoration: underline; }
+main { max-width: 1080px; margin: 0 auto; padding: 24px 20px 80px; display: flex; flex-direction: column; gap: 18px; }
+
+.flow { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+.flow-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.flow-head .n { font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+.flow-head h2 { margin: 0; font-size: 17px; color: var(--ink); }
+.tag { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 5px; background: var(--trigger-soft); color: var(--trigger); }
+.flow-head .links { display: flex; gap: 12px; font-size: 13px; }
+.flow-head .links a { color: var(--accent); text-decoration: none; }
+.flow-head .links a:hover { text-decoration: underline; }
+.run { margin-left: auto; font: inherit; font-weight: 700; color: #fff; background: var(--accent); border: 0; border-radius: 8px; padding: 9px 20px; cursor: pointer; }
+.run:hover { filter: brightness(1.08); }
+.run:focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 2px; }
+.run:disabled { background: var(--muted); cursor: default; }
+
+.nodes { display: flex; align-items: flex-start; gap: 0; margin: 18px 0 6px; overflow-x: auto; padding: 4px 2px 6px; }
+.node { flex: 0 0 auto; width: 118px; text-align: center; }
+.tile { width: 58px; height: 58px; margin: 0 auto 8px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--card); display: grid; place-items: center; color: var(--body); transition: border-color .2s, background .2s, box-shadow .2s; }
+.tile svg { width: 26px; height: 26px; }
+.node.trigger .tile { border-radius: 29px 12px 12px 29px; color: var(--trigger); background: var(--trigger-soft); border-color: #f2dcb6; }
+.node.ai .tile, .node.agent .tile { color: var(--accent); background: var(--accent-soft); border-color: #cfdaf5; }
+.node .label { font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.3; }
+.node .kind { font-size: 11px; color: var(--muted); }
+.wire { flex: 0 0 56px; height: 58px; display: flex; align-items: center; position: relative; }
+.wire::before { content: ""; flex: 1; height: 2px; background: var(--line); }
+.wire::after { content: ""; border: 5px solid transparent; border-left-color: var(--line); margin-right: -4px; }
+.wire span { position: absolute; top: 6px; left: 0; right: 0; text-align: center; font-size: 10px; color: var(--muted); letter-spacing: .04em; }
+.node.active .tile { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.flow.done .tile { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); }
+.flow.failed .tile { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); }
+@media (prefers-reduced-motion: reduce) { .tile { transition: none; } }
+
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 10px 0 4px; }
+.fields label { display: grid; gap: 3px; font-size: 12px; color: var(--muted); }
+.fields label.wide { grid-column: 1 / -1; }
+.fields input { font: inherit; color: var(--ink); padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--card); }
+.fields input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.command { margin: 10px 0 0; font: 12.5px/1.5 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.command b { color: var(--body); font-weight: 500; }
+.status { margin: 10px 0 0; font-size: 13px; font-weight: 600; }
+.status.running { color: var(--accent); } .status.ok { color: var(--ok); } .status.bad { color: var(--bad); }
+.result { margin: 8px 0 0; padding: 12px 14px; border-radius: 8px; background: var(--canvas); font: 13px/1.6 var(--mono); color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; }
+.result .k { color: var(--muted); }
+footer { text-align: center; font-size: 13px; color: var(--muted); padding: 0 20px 40px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Automations</h1>
+  <span class="pill" id="project">loading</span>
+  <a id="sheet" href="#" target="_blank" rel="noopener" hidden>Open the sheet</a>
+</header>
+<main id="flows"></main>
+<footer>Each Run button runs the command shown under its flow. The steps light up to show the order. A run reports only its result.</footer>
+
+<script>
+const ICONS = {
+  trigger: '<path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="currentColor"/>',
+  code: '<path d="m9 8-4 4 4 4m6-8 4 4-4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  ai: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" fill="currentColor"/>',
+  agent: '<path d="M17 4.5A8.5 8.5 0 1 0 20.5 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14 4h4v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/>',
+  out: '<path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'
+};
+const KIND = { trigger: "Trigger", code: "Code", ai: "AI step", agent: "Agent", out: "Output" };
+
+const FLOWS = [
+  { id: "example-hello", kind: "job", title: "Hello world", trigger: "Manual",
+    nodes: [["trigger", "You click Run"], ["code", "run()"], ["out", "One log line"]] },
+  { id: "example-hello-webhook", kind: "webhook", title: "Hello world, by webhook", trigger: "Webhook",
+    fields: [["name", "Name", "Owain"]],
+    nodes: [["trigger", "Request arrives"], ["code", "Check the token"], ["code", "run(payload)"], ["out", "Reply"]] },
+  { id: "example-03-job-leads", kind: "job", title: "Job leads", trigger: "Schedule, 9am", links: ["sheet"],
+    nodes: [["trigger", "9am, or Run"], ["code", "Read the sheet"], ["ai", "Model searches"], ["code", "Drop repeats"], ["out", "New rows"]] },
+  { id: "example-04-speed-to-lead", kind: "webhook", title: "Speed to lead", trigger: "Webhook", links: ["sheet"],
+    fields: [["name", "Name", "Sam Price"], ["email", "Email", "sam@example.com"], ["company", "Company", "Price Engineering"],
+             ["message", "Message", "We need two site managers in Swansea by January. Can you help?", true]],
+    nodes: [["trigger", "Form submitted"], ["code", "Check the token"], ["ai", "Model writes a reply"], ["code", "Save to the sheet"], ["out", "Tell the team"]] },
+  { id: "example-05-receipts", kind: "job", title: "Receipts", trigger: "Schedule, every 15 min", links: ["sheet", "receipts"],
+    nodes: [["trigger", "New file in folder"], ["code", "Download it"], ["ai", "Model reads it"], ["code", "Add a row"], ["out", "Mark as done"]] },
+  { id: "example-06-video-to-content", kind: "job", title: "Video to content", trigger: "Schedule, every 15 min", links: ["sheet", "videos"],
+    nodes: [["trigger", "New video in folder"], ["agent", "Agent decides", "loops"], ["code", "Tools run"], ["out", "Drafts in sheet"]] }
+];
+const LINK_TEXT = { sheet: "Sheet", receipts: "Receipts folder", videos: "Videos folder" };
+
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+function draw(flow, index, config) {
+  const card = el("section", "flow");
+  const head = el("div", "flow-head");
+  head.append(el("span", "n", String(index + 1)), el("h2", null, flow.title), el("span", "tag", flow.trigger));
+  const links = el("span", "links");
+  (flow.links || []).forEach(key => { if (config[key]) { const a = el("a", null, LINK_TEXT[key]); a.href = config[key]; a.target = "_blank"; a.rel = "noopener"; links.append(a); } });
+  const run = el("button", "run", "Run"); run.type = "button";
+  head.append(links, run);
+
+  const nodes = el("div", "nodes");
+  flow.nodes.forEach(([type, label, wireLabel], i) => {
+    const node = el("div", "node " + type);
+    const tile = el("div", "tile"); tile.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS[type] + "</svg>";
+    node.append(tile, el("div", "label", label), el("div", "kind", KIND[type]));
+    nodes.append(node);
+    if (i < flow.nodes.length - 1) { const wire = el("div", "wire"); if (wireLabel) wire.append(el("span", null, wireLabel)); nodes.append(wire); }
+  });
+
+  const fields = el("div", "fields");
+  (flow.fields || []).forEach(([name, label, value, wide]) => {
+    const wrap = el("label", wide ? "wide" : null, label);
+    const input = el("input"); input.id = flow.id + "-" + name; input.name = name; input.value = value;
+    wrap.append(input); fields.append(wrap);
+  });
+
+  const command = el("p", "command"), status = el("p", "status"), result = el("div", "result");
+  status.hidden = result.hidden = true;
+  command.innerHTML = flow.kind === "job"
+    ? "<b>gcloud run jobs execute " + flow.id + " --region " + config.region + " --wait</b>"
+    : "<b>curl -X POST https://&lt;" + flow.id + "&gt;/hook</b> with the token and the fields above";
+
+  card.append(head, nodes);
+  if (flow.fields) card.append(fields);
+  card.append(command, status, result);
+  run.addEventListener("click", () => start(flow, card, run, status, result, command));
+  return card;
+}
+
+async function start(flow, card, run, status, result, command) {
+  const tiles = [...card.querySelectorAll(".node")];
+  card.classList.remove("done", "failed");
+  run.disabled = true; result.hidden = true; status.hidden = false; status.className = "status running";
+  const began = Date.now();
+  let step = 0;
+  const tick = () => { tiles.forEach((t, i) => t.classList.toggle("active", i === step % tiles.length)); status.textContent = "Running, " + Math.round((Date.now() - began) / 1000) + "s"; step++; };
+  tick(); const timer = setInterval(tick, 900);
+
+  let reply;
+  try {
+    const payload = {};
+    card.querySelectorAll(".fields input").forEach(input => { payload[input.name] = input.value; });
+    const response = await fetch("/run/" + flow.kind + "/" + flow.id, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    reply = await response.json();
+    if (!response.ok) reply = { ok: false, seconds: 0, output: reply.detail || "The request failed." };
+  } catch (error) { reply = { ok: false, seconds: Math.round((Date.now() - began) / 1000), output: String(error) }; }
+
+  clearInterval(timer); tiles.forEach(t => t.classList.remove("active"));
+  card.classList.add(reply.ok ? "done" : "failed");
+  status.className = "status " + (reply.ok ? "ok" : "bad");
+  status.textContent = (reply.ok ? "Finished in " : "Failed after ") + reply.seconds + "s";
+  if (reply.command) command.innerHTML = "<b></b>", command.firstChild.textContent = reply.command;
+  result.textContent = ""; result.hidden = false; run.disabled = false;
+  if (reply.execution) {  // a job: its result is in the logs, which arrive a few seconds later
+    result.textContent = "Fetching what it logged...";
+    try { reply.output = await (await fetch("/logs/" + reply.execution)).json(); } catch (error) { reply.output = String(error); }
+    result.textContent = "";
+  }
+  show(result, reply.output);
+}
+
+function show(box, output) {
+  const items = Array.isArray(output) ? output : [output];
+  items.forEach(item => {
+    let value = item;
+    if (typeof item === "string") { try { const parsed = JSON.parse(item); if (parsed && typeof parsed === "object") value = parsed; } catch (e) {} }
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      Object.entries(value).forEach(([key, v]) => {
+        const line = el("div"); line.append(el("span", "k", key + ": "));
+        line.append(document.createTextNode(Array.isArray(v) ? (v.length ? "\n  " + v.map(x => typeof x === "string" ? x : JSON.stringify(x)).join("\n  ") : "nothing new") : String(v)));
+        box.append(line);
+      });
+    } else box.append(el("div", null, String(value)));
+  });
+}
+
+fetch("/config").then(r => r.json()).then(config => {
+  document.getElementById("project").textContent = config.project + " · " + config.region;
+  const sheet = document.getElementById("sheet"); if (config.sheet) { sheet.href = config.sheet; sheet.hidden = false; }
+  const main = document.getElementById("flows");
+  FLOWS.forEach((flow, i) => main.append(draw(flow, i, config)));
+});
+</script>
+</body>
+</html>

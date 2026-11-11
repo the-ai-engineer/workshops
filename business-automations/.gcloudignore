@@ -5,3 +5,5 @@ service-account*.json
 .pytest_cache/
 __pycache__/
 .git/
+ui/
+tests/

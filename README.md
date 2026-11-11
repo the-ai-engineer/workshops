@@ -4,7 +4,7 @@ Code for the AI Engineer workshops. One folder per workshop. Each workshop's wri
 
 | Workshop | What you build |
 |---|---|
-| [business-automations](business-automations/) | Python automations on Cloud Run that replace typical n8n workflows: a Drive invoice inbox that fills a Google Sheet, a Drive folder for every new client, and meeting reminders |
+| [business-automations](business-automations/) | The code for the Build Professional AI Automations course: short Python automations on Cloud Run, started by hand, on a schedule or by a webhook. Job leads, speed to lead, receipts, and a video-to-content agent |
 
 ## Adding a workshop
 

@@ -52,4 +52,5 @@ rm -f "$POLICY"
 
 echo
 echo "Alerts for failed automations go to $EMAIL."
-echo "Test it: make a job fail, then check your inbox within a few minutes."
+echo "A new rule takes a few minutes to start watching. Wait about five minutes,"
+echo "then make a job fail and check your inbox."

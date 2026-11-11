@@ -1,6 +1,6 @@
 # Professional AI Automations: full course outline
 
-The flow for the YouTube course, built from the rough outline. Each chapter has the points to make and, where there is a demo, the file to show. The step-by-step commands for the demos are in [WORKSHOP.md](WORKSHOP.md).
+The flow for the YouTube course, built from the rough outline. Each chapter has the points to make and, where there is a demo, the file to show. The full course page, with the commands for every demo, is [Build Professional AI Automations](https://claude.ai/artifact/Fw5zpKV9wZ3baQQzm1F6Bu).
 
 Things still to decide are marked **Decide**. Things not built yet are marked **To build**.
 
@@ -208,7 +208,6 @@ Everything is in [`examples/`](examples/). Each file is only its own logic. The 
 | Receipts | [`examples/05-receipts.py`](examples/05-receipts.py) |
 | Video to content | [`examples/06-video_to_content.py`](examples/06-video_to_content.py), an agent on Google's ADK |
 | Failure alert | [`alerts.sh`](alerts.sh) |
-| Earlier versions | `src/` holds the first, longer versions, including contract filing and call notes, which are not in the course line-up |
 
 **Decided: a small shared toolkit, not one file per example.** Self-contained files were tried and came out at 115 to 140 lines each, more than half of it Google sign-in and Sheets code.
 
