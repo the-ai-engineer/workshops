@@ -26,12 +26,6 @@ no_ai, simple = load("00-contract_filing"), load("01-lead_research")
 agent_node, orchestrates = load("02-call_notes"), load("03-video_to_content")
 webhook = load("04-webhook_to_sheet")
 
-TRIGGERS = SRC.parent / "triggers"
-sys.path.insert(0, str(TRIGGERS))
-
-import hello_job  # noqa: E402
-import hello_webhook  # noqa: E402
-
 
 @pytest.fixture(autouse=True)
 def env(monkeypatch):
@@ -83,20 +77,6 @@ class FakeTools:
 
 def file(file_id, name, mime):
     return {"id": file_id, "name": name, "mimeType": mime, "webViewLink": f"https://drive/{file_id}"}
-
-
-# Triggers
-
-def test_hello_job_says_hello():
-    assert hello_job.run()["message"] == "Hello, world!"
-
-
-def test_hello_webhook_checks_the_token_then_says_hello():
-    client = TestClient(hello_webhook.app)
-
-    assert client.post("/hook", json={"name": "Owain"}).status_code == 401
-    assert client.post("/hook", json={"name": "Owain"}, headers={"X-Token": "secret"}).json() == {"message": "Hello, Owain!"}
-    assert client.post("/hook", headers={"X-Token": "secret"}).json() == {"message": "Hello, world!"}
 
 
 # 00

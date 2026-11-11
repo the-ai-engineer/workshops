@@ -22,11 +22,20 @@ tests/           every automation and example against fakes, no keys needed
 deploy.sh        Cloud Run plus the scheduler jobs
 ```
 
-## Triggers: hello world, started three ways
+## The course
 
-[`triggers/`](triggers/) separates how an automation starts from what it does. [`hello_job.py`](triggers/hello_job.py) is one script that you run by hand (manual trigger) and that Cloud Scheduler runs every 5 minutes (scheduled trigger). [`hello_webhook.py`](triggers/hello_webhook.py) is a service that runs when its URL is called with the right token (webhook trigger). They need no Drive, Sheets or AI. `./deploy-examples.sh` deploys them and prints the commands to try each one.
+The course page is [Build Professional AI Automations](https://claude.ai/artifact/Fw5zpKV9wZ3baQQzm1F6Bu) and its outline is [COURSE.md](COURSE.md). The course code is in [`examples/`](examples/). Every automation there is a function called `run`, and the last line of the file picks the trigger: `triggers.job(run)` or `triggers.webhook(run)`.
 
-The course outline is [COURSE.md](COURSE.md).
+| Example | Trigger | What it does |
+|---|---|---|
+| [`01-hello_job.py`](examples/01-hello_job.py) | Manual, and every 5 minutes on a schedule | Says hello. One script, two triggers |
+| [`02-hello_webhook.py`](examples/02-hello_webhook.py) | Webhook | Says hello to whoever calls its URL with the right token |
+| [`03-job_leads.py`](examples/03-job_leads.py) | Scheduled, 9am | Searches for new job adverts and adds them to the Job leads tab of a sheet. One AI call |
+| [`04-speed_to_lead.py`](examples/04-speed_to_lead.py) | Webhook | Saves a website enquiry to the Enquiries tab with a personal reply already written, and tells the team in Slack. One AI call |
+| [`05-receipts.py`](examples/05-receipts.py) | Scheduled check of a Drive folder | Reads each new receipt (PDF or photo) and adds a row to the Expenses tab. One AI call |
+| [`06-video_to_content.py`](examples/06-video_to_content.py) | Scheduled check of a Drive folder | An agent, built on Google's ADK, turns a new video into the content drafts that suit it |
+
+[`examples/toolkit/`](examples/toolkit/) holds the shared parts: `triggers`, `sheets`, `drive`, `ai` and `web`. `./deploy-examples.sh` deploys everything and prints the commands to try each one. Set `SHEET_ID`, `WEBHOOK_TOKEN`, `RECEIPTS_FOLDER_ID` and `VIDEOS_FOLDER_ID` in `.env` first. `./alerts.sh` sets up an email alert for any run that fails.
 
 ## Step by step: who decides the steps
 

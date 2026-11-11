@@ -42,7 +42,7 @@ for attempt in 1 2 3 4; do  # a brand-new build account takes about a minute to 
   sleep 30
 done
 
-KEYS="CLIENTS_FOLDER_ID|CLIENTS_SHEET_ID|CONTRACTS_INBOX_ID|RECORDINGS_FOLDER_ID|VIDEOS_FOLDER_ID|GEMINI_MODEL|LEADS_QUERY|LEADS_PER_RUN"
+KEYS="SHEET_ID|RECEIPTS_FOLDER_ID|SLACK_WEBHOOK_URL|CLIENTS_FOLDER_ID|CLIENTS_SHEET_ID|CONTRACTS_INBOX_ID|RECORDINGS_FOLDER_ID|VIDEOS_FOLDER_ID|GEMINI_MODEL|LEADS_QUERY|LEADS_PER_RUN"
 # "^|^" makes | the separator, so a value can contain commas and spaces.
 VARS="^|^GOOGLE_CLOUD_PROJECT=${PROJECT}|$(grep -E "^(${KEYS})=." .env | paste -sd"|" -)"
 
@@ -73,18 +73,25 @@ schedule() {  # schedule name, cron, job to start
 
 url() { gcloud run services describe "$1" --project "$PROJECT" --region "$REGION" --format 'value(status.url)'; }
 
-# Module 1, triggers: hello world started three ways.
-job example-hello triggers/hello_job.py                       # 1. manual: you run the job
-schedule example-hello-every-5-minutes "*/5 * * * *" example-hello   # 2. scheduled: the clock runs the same job
-service example-hello-webhook triggers/hello_webhook.py        # 3. webhook: a request runs it
+# The course examples in examples/.
+job example-hello examples/01-hello_job.py                            # manual: you run the job
+schedule example-hello-every-5-minutes "*/5 * * * *" example-hello   # scheduled: the clock runs the same job
+service example-hello-webhook examples/02-hello_webhook.py           # webhook: a request runs it
+job example-03-job-leads examples/03-job_leads.py
+schedule example-03-job-leads-daily "0 9 * * *" example-03-job-leads  # job leads, every day at 9am
+service example-04-speed-to-lead examples/04-speed_to_lead.py
+job example-05-receipts examples/05-receipts.py
+schedule example-05-receipts-check "*/15 * * * *" example-05-receipts   # look for new receipts every 15 minutes
+job example-06-video-to-content examples/06-video_to_content.py 2Gi      # the video is held in memory
+schedule example-06-video-to-content-check "*/15 * * * *" example-06-video-to-content
 
-# Module 2, workflows. The two that download recordings get 2Gi, because the file is held in memory.
+# The earlier, longer examples in src/. The two that download recordings get 2Gi, because the file is held in memory.
 job example-00-contract-filing src/00-contract_filing.py
 job example-01-lead-research src/01-lead_research.py
 job example-02-call-notes src/02-call_notes.py 2Gi
 job example-03-video-to-content src/03-video_to_content.py 2Gi
 service example-04-webhook-to-sheet src/04-webhook_to_sheet.py
-schedule example-01-lead-research-daily "0 9 * * *" example-01-lead-research  # the lead research, every day at 9am
+schedule example-01-lead-research-daily "0 9 * * *" example-01-lead-research
 
 G="--project $PROJECT --region $REGION"
 echo
@@ -95,5 +102,5 @@ echo "2. Scheduled:  runs every 5 minutes. To stop it: gcloud scheduler jobs pau
 echo "3. Webhook:    curl -X POST $(url example-hello-webhook)/hook -H \"X-Token: \$WEBHOOK_TOKEN\" -H 'Content-Type: application/json' -d '{\"name\": \"Owain\"}'"
 echo "   Logs:       gcloud logging read 'resource.labels.job_name=\"example-hello\" AND textPayload:Hello' --project $PROJECT --freshness 15m --format 'value(timestamp, textPayload)'"
 echo
-echo "Lead research: gcloud run jobs execute example-01-lead-research $G --wait"
+echo "Job leads:     gcloud run jobs execute example-03-job-leads $G --wait"
 echo "CRM webhook:   curl -X POST $(url example-04-webhook-to-sheet)/hook -H \"X-Token: \$WEBHOOK_TOKEN\" -H 'Content-Type: application/json' -d '{\"name\": \"Owain\"}'"

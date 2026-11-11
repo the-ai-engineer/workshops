@@ -9,6 +9,7 @@ Things still to decide are marked **Decide**. Things not built yet are marked **
 - In this course we build business automations like the ones people make in n8n, but in code.
 - I'll show you how I build them professionally, for real clients.
 - There are no right answers here. This is how I do it and why.
+- **What "professional" means.** Working on your machine is not the same as running reliably for a business. Professional means: it runs at scale (thousands of runs a day), it survives failure (retries and error handling), you can see what it's doing (logs and metrics), it tells you when it breaks (alerts), it is secure, and it is easy to maintain.
 - What you will have at the end: a handful of working automations on Google Cloud, and a way to decide how to build the next one.
 
 ## 2. What is a business automation, and why it matters
@@ -197,21 +198,23 @@ flowchart LR
 
 **State of the code**
 
-The new versions live in [`examples/`](examples/). Each file is only its own logic. The shared parts (start a job or a webhook, read and write the sheet, call the model) are in [`examples/toolkit/`](examples/toolkit/), four short files.
+Everything is in [`examples/`](examples/). Each file is only its own logic. The shared parts are in [`examples/toolkit/`](examples/toolkit/): `triggers`, `sheets`, `drive`, `ai` and `web`.
 
 | Demo | Code |
 |---|---|
-| Hello job, hello webhook | [`examples/01-hello_job.py`](examples/01-hello_job.py), [`examples/02-hello_webhook.py`](examples/02-hello_webhook.py). Rewritten, not deployed yet |
-| Job leads | [`examples/03-job_leads.py`](examples/03-job_leads.py). Rewritten and run live against Gemini, not deployed yet |
-| Speed to lead | **To build** |
-| Receipts | **To build** |
-| Video to content | **To build** with ADK. The older version is `src/03-video_to_content.py` |
-| Failure alert | **To build** |
-| Old versions | `src/` and `triggers/` are what is deployed today. Delete them once `examples/` is complete |
+| Hello job, hello webhook | [`examples/01-hello_job.py`](examples/01-hello_job.py), [`examples/02-hello_webhook.py`](examples/02-hello_webhook.py) |
+| Job leads | [`examples/03-job_leads.py`](examples/03-job_leads.py) |
+| Speed to lead | [`examples/04-speed_to_lead.py`](examples/04-speed_to_lead.py) |
+| Receipts | [`examples/05-receipts.py`](examples/05-receipts.py) |
+| Video to content | [`examples/06-video_to_content.py`](examples/06-video_to_content.py), an agent on Google's ADK |
+| Failure alert | [`alerts.sh`](alerts.sh) |
+| Earlier versions | `src/` holds the first, longer versions, including contract filing and call notes, which are not in the course line-up |
 
-**Decided: a small shared toolkit, not one file per example.** Self-contained files were tried and came out at 115 to 140 lines each, more than half of it Google sign-in and Sheets code. With the toolkit the job leads example is about 60 lines and reads as its three steps.
+**Decided: a small shared toolkit, not one file per example.** Self-contained files were tried and came out at 115 to 140 lines each, more than half of it Google sign-in and Sheets code.
 
-**Decided: no workflow class.** The interface is a function called `run` plus one line that picks the trigger. Steps are lines of code inside `run`. A class that models steps and branches would be a small n8n, which is the thing this course argues you don't need.
+**Decided: no workflow class.** The interface is a function called `run` plus one line that picks the trigger.
+
+**Decided: agents run on Google's ADK**, through one function, `ai.agent`.
 
 **Decide: speed to lead, how far to go.** Writing the row and the drafted reply into the sheet needs nothing new. Sending the email for real needs a mail password, and telling the team in Slack needs a Slack webhook address. Both can be optional lines that switch on when the setting is present.
 

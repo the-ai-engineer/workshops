@@ -25,7 +25,10 @@ def webhook_app(run) -> FastAPI:
         # The URL is public, so first check who is calling.
         if not hmac.compare_digest(x_token.encode(), os.environ["WEBHOOK_TOKEN"].encode()):
             raise HTTPException(401, "bad token")
-        result = run(payload)
+        try:
+            result = run(payload)
+        except (KeyError, ValueError) as error:  # the caller sent something the automation can't use
+            raise HTTPException(400, f"bad request: {error}")
         print(json.dumps(result))
         return result
 
