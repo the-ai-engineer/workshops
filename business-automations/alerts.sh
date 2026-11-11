@@ -12,7 +12,9 @@
 # only the course examples.
 set -euo pipefail
 
-PROJECT="${PROJECT:?set PROJECT to your Google Cloud project id}"
+# The project comes from the PROJECT variable, or from PROJECT in .env.
+PROJECT="${PROJECT:-$(grep -s '^PROJECT=' .env | cut -d= -f2 || true)}"
+: "${PROJECT:?set PROJECT in .env to your Google Cloud project id}"
 EMAIL="${ALERT_EMAIL:?set ALERT_EMAIL to the address that should get the alerts}"
 NAMES="${NAMES:-.*}"
 RULE="An automation failed"

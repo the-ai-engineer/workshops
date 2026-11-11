@@ -6,7 +6,9 @@
 # that account is the login for Sheets, Drive and Gemini (through Vertex AI).
 set -euo pipefail
 
-PROJECT="${PROJECT:?set PROJECT to your Google Cloud project id}"
+# The project comes from the PROJECT variable, or from PROJECT in .env.
+PROJECT="${PROJECT:-$(grep -s '^PROJECT=' .env | cut -d= -f2 || true)}"
+: "${PROJECT:?set PROJECT in .env to your Google Cloud project id}"
 REGION="${REGION:-europe-west2}"
 ACCOUNT="automations@${PROJECT}.iam.gserviceaccount.com"
 BUILDER="automations-build@${PROJECT}.iam.gserviceaccount.com"
