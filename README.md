@@ -1,4 +1,6 @@
-# AI Engineer workshops
+# AI Engineer Workshops
+
+For recordings: https://skool.com/aiengineer
 
 Code for the AI Engineer workshops. One folder per workshop. Start with the README in the workshop's folder.
 
