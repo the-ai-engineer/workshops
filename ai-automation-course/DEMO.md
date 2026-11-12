@@ -92,10 +92,6 @@ Some organisations don't allow a public Cloud Run service. The deploy still work
 - With `curl`, add `-H "Authorization: Bearer $(gcloud auth print-identity-token)"`.
 - With `tools/send_lead.py`, add `--private`.
 
-## Demo 3: a Claude Code routine
-
-Nothing to run here. Open a routine you use, run it, and show where it stops fitting.
-
 ## Demo 4: the Google Cloud console
 
 Print the pages to open, in the order to show them:
@@ -238,6 +234,30 @@ uv run python tools/send_lead.py $LEAD_URL --message "We spend two days a month 
 ```
 
 The Slack message arrives, the email arrives at `TEST_LEAD_EMAIL`, and the row lands in the sheet.
+
+## The enquiry form: the same demo from a web page
+
+`tools/form.py` is a small website with an enquiry form. Its backend signs each form and calls the webhook, the way a real site would. The email field is filled in with `TEST_LEAD_EMAIL`, so the proposal comes to you.
+
+On your laptop. Start the webhook in one terminal:
+
+```
+uv run python automations/05_speed_to_lead.py
+```
+
+Start the form in a second terminal, then open http://127.0.0.1:8770:
+
+```
+uv run python tools/form.py
+```
+
+On Google Cloud, point the form at the live webhook:
+
+```
+uv run python tools/form.py $LEAD_URL
+```
+
+Fill it in and send it. The page shows the webhook's reply and how long it took. Change the message each time: the same email and message twice is a repeat, and a repeat is skipped.
 
 ## Demo 9: three calls to the live webhook
 
