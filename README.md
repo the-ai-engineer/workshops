@@ -7,6 +7,7 @@ Code for the AI Engineer workshops. One folder per workshop. Start with the READ
 | Workshop | What you build |
 |---|---|
 | [business-automations](business-automations/) | Build Professional AI Automations: short Python automations on Google Cloud Run, started by hand, on a schedule or by a webhook. Job leads, speed to lead, receipts, and a video-to-content agent |
+| [ai-automation-course](ai-automation-course/) | Advanced AI Automation Full Course 2027: hello world started by hand, on a schedule and by a webhook, then daily research and speed to lead, with shadow mode, signed webhooks, retries and alerts |
 
 ## Adding a workshop
 
