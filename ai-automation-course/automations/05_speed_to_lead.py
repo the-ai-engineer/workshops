@@ -5,7 +5,7 @@ Today          enquiries sit in an inbox until someone has time. By then the pro
                two other companies, and the first to reply usually wins.
 Trigger        webhook. The website's form sends each enquiry here, signed with a shared secret.
 Output         a Slack message to the team at once, an email to the prospect with a first proposal,
-               and a row in the "Leads" tab of the sheet.
+               a row in the "Leads" tab of the sheet, and a second Slack message once the proposal has gone.
 
 The steps never change and one needs judgment: writing the proposal. That is one
 model call, and it may only offer what is in services.md. The code checks the
@@ -18,6 +18,7 @@ Shadow mode is on unless SHADOW=false: everything runs, nothing is sent.
     uv run python tools/send_lead.py http://localhost:8080
 """
 import hashlib
+import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,6 +29,7 @@ from toolkit import ai, mail, sheets, slack, triggers
 
 TAB = "Leads"
 SERVICES = (Path(__file__).parent / "services.md").read_text()
+PRICE = r"£\d+(?:,\d{3})*"  # £3,000 or £12,000, without the comma or full stop that follows it
 
 
 class Lead(BaseModel):
@@ -59,8 +61,8 @@ def write_proposal(lead: Lead) -> Proposal:
 
 def safe_to_send(proposal: Proposal) -> bool:
     """Plain code checks the model's work: it fits, and every price in it is a real one."""
-    prices = set(re.findall(r"£[\d,]+", proposal.body))
-    return proposal.fits and prices <= set(re.findall(r"£[\d,]+", SERVICES))
+    prices = set(re.findall(PRICE, proposal.body))
+    return proposal.fits and prices <= set(re.findall(PRICE, SERVICES))
 
 
 def run(payload: dict) -> dict:
@@ -78,8 +80,9 @@ def run(payload: dict) -> dict:
     try:
         proposal = write_proposal(lead)
         status = "proposal sent" if safe_to_send(proposal) else "needs a person"
-    except Exception:
+    except Exception as error:
         proposal, status = None, "needs a person"
+        print(json.dumps({"severity": "WARNING", "status": status, "reason": repr(error)}), flush=True)  # say why, in the logs
     if status == "proposal sent":
         sent = mail.send(lead.email, proposal.subject, proposal.body, key=lead_id)
         status = status if sent else "proposal ready (shadow mode)"
@@ -89,6 +92,10 @@ def run(payload: dict) -> dict:
     # 4. Save it.
     sheets.add(TAB, [datetime.now(timezone.utc).isoformat(timespec="minutes"), lead_id, lead.name, lead.email,
                      lead.company, lead.message, proposal.body if proposal else "", status])
+
+    # 5. Tell the team it went. After the save, so a Slack problem here can't lose the lead.
+    if status == "proposal sent":
+        slack.post(f"Proposal sent to {lead.name} ({lead.company or lead.email}): {proposal.subject}")
     return {"lead": lead_id, "status": status}
 
 

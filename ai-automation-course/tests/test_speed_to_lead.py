@@ -15,6 +15,7 @@ def test_a_lead_gets_a_proposal_and_the_team_hears(world):
     assert lead.run(FORM)["status"] == "proposal sent"
     assert len(world.emails) == 1 and world.emails[0]["to"] == "sam@example.com"
     assert world.slack[0].startswith("New lead: Sam Price")
+    assert world.slack[1] == "Proposal sent to Sam Price (Price Logistics): Your delivery notes"
     assert world.tabs["Leads"][0][-1] == "proposal sent"
 
 
@@ -39,6 +40,13 @@ def test_a_made_up_price_is_never_sent(world):
     assert world.emails == []
 
 
+def test_every_price_in_the_list_can_be_quoted(world):
+    # "From £12,000, quoted after..." in services.md: the comma after the price is not part of it.
+    world.answer = lead.Proposal(fits=True, subject="One automation",
+                                 body="Build one automation starts from £12,000, and support is £1,500 a month.")
+    assert lead.run(FORM)["status"] == "proposal sent"
+
+
 def test_nothing_fits_and_a_person_replies(world):
     world.answer = lead.Proposal(fits=False, subject="", body="")
     assert lead.run({**FORM, "message": "Can you build us a mobile app?"})["status"] == "needs a person"
@@ -57,3 +65,4 @@ def test_shadow_mode_writes_the_proposal_but_sends_nothing(world, monkeypatch):
     monkeypatch.setattr(mail, "send", lambda *a, **k: False)  # what the real send returns in shadow mode
     world.answer = good_proposal
     assert lead.run(FORM)["status"] == "proposal ready (shadow mode)"
+    assert len(world.slack) == 1  # the lead. Nothing went, so the team isn't told it did

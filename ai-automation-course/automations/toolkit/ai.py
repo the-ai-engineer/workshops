@@ -3,8 +3,9 @@
 There is no API key. On Cloud Run the client signs in as the service account the
 automation runs as. On your laptop it uses your gcloud login.
 
-VERTEX_LOCATION pins the region the model runs in, so a customer's data is
-processed where you say. Check the model you pick is offered in that region.
+VERTEX_LOCATION is where the model runs. "global" has every model, and new
+models often start there. Set a region, such as europe-west2, to pin where a
+customer's data is processed. Check the model you pick is offered in that region.
 """
 import os
 from functools import cache
@@ -15,7 +16,7 @@ from google.genai import types
 from toolkit import retry
 
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
-LOCATION = os.environ.get("VERTEX_LOCATION", "europe-west1")
+LOCATION = os.environ.get("VERTEX_LOCATION", "global")
 
 tokens = 0  # tokens used so far in this run; the trigger logs it
 

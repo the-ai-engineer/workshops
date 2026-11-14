@@ -233,7 +233,7 @@ Send a real lead. The same email and message twice is a repeat, and a repeat is 
 uv run python tools/send_lead.py $LEAD_URL --message "We spend two days a month matching invoices to purchase orders by hand. Can you automate it?"
 ```
 
-The Slack message arrives, the email arrives at `TEST_LEAD_EMAIL`, and the row lands in the sheet.
+Two Slack messages arrive, "New lead" and then "Proposal sent". The email arrives at `TEST_LEAD_EMAIL`, and the row lands in the sheet.
 
 ## The enquiry form: the same demo from a web page
 
@@ -363,5 +363,5 @@ gcloud scheduler jobs list --location europe-west2
 | A laptop run fails with a 403 or 404 from Sheets | The sheet isn't shared with the `automations` account, or `SHEET_ID` is wrong |
 | The logs command prints nothing | Logs take up to half a minute. Run it again |
 | A lead comes back `duplicate` | That email and message are already in the `Leads` tab. Send a new `--message` |
-| The model call fails with `not found` | The model isn't offered in `VERTEX_LOCATION`. Pick a region that has it |
+| A lead comes back `needs a person` and the logs say `not found` | The model isn't offered in `VERTEX_LOCATION`. Set it to `global`, or pick a region that has it |
 | No alert email | The rule is under five minutes old, or it sent an email in the last five minutes. It sends at most one every five minutes |
